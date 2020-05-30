@@ -1,6 +1,13 @@
-const main = document.querySelector(".main");
-const scoreElem = document.querySelector('.score');
-const levelElem = document.querySelector('.level');
+
+// Vars
+
+const main = document.querySelector(".main"),
+      scoreElem = document.querySelector('.score'),
+      levelElem = document.querySelector('.level'),
+      nextTetroElem = document.querySelector('.next-tetro'),
+      startBtn = document.getElementById("start"),
+      pauseBtn = document.getElementById("pause"),
+      gameOver = document.querySelector(".game-over");
 
 let playfield = [
   [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -27,7 +34,8 @@ let playfield = [
 
 let currentLevel = 1;
 let score = 0;
-
+let gameTimerId;
+let isPaused = true;
 let possibleLevels = {
   1: {
     speed: 500,
@@ -56,16 +64,7 @@ let possibleLevels = {
   }
 }
 
-
-let activeTetro = {
-  x: 0,
-  y: 0,
-  shape: [
-    [1, 1, 1],
-    [0, 1, 0],
-    [0, 0, 0],
-  ]
-}
+// Obj of possible figures
 
 let figures = {
   O: [
@@ -73,10 +72,10 @@ let figures = {
     [1, 1],
   ],
   I: [
-    [0, 1, 0, 0],
-    [0, 1, 0, 0],
-    [0, 1, 0, 0],
-    [0, 1, 0, 0],
+    [0, 0, 0, 0],
+    [1, 1, 1, 1],
+    [0, 0, 0, 0],
+    [0, 0, 0, 0],
   ],
   S: [
     [0, 1, 1],
@@ -105,6 +104,9 @@ let figures = {
   ],
 };
 
+let activeTetro = getNewTetro();
+let nextTetro = getNewTetro();
+
 function draw() {
   let mainInnerHTML = "";
   for (let y = 0; y < playfield.length; y++) {
@@ -119,6 +121,21 @@ function draw() {
     }
   }
   main.innerHTML = mainInnerHTML;
+}
+
+function drawNextTetro() {
+  let nextTetroInnerHTML = "";
+  for (let y = 0; y < nextTetro.shape.length; y++) {
+    for (let x = 0; x < nextTetro.shape[y].length; x++) {
+      if (nextTetro.shape[y][x]) {
+        nextTetroInnerHTML += '<div class="cell movingCell"></div>';
+      } else {
+        nextTetroInnerHTML += '<div class="cell"></div>';
+      }
+    }
+    nextTetroInnerHTML += "<br/>";
+  }
+  nextTetroElem.innerHTML = nextTetroInnerHTML;
 }
 
 function removePrevActiveTetro() {
@@ -154,6 +171,8 @@ function rotateTetro() {
     activeTetro.shape = prevTetroState;
   }
 }
+
+// 
 
 function hasCollisions() {
   for (let y = 0; y < activeTetro.shape.length; y++) {
@@ -192,18 +211,18 @@ function removeFullLines() {
 
   
   switch(filledLines) {
-    case 1:
-      score += 10;
+      case 1:
+      score += possibleLevels[currentLevel].scorePerLine;
       break;
-    case 2:
-      score += 10 * 3;
+      case 2:
+      score += possibleLevels[currentLevel].scorePerLine * 3;
       break;
       case 3:
-        score += 10 * 6;
+        score += possibleLevels[currentLevel].scorePerLine * 6;
       break;
       case 4:
-        score += 10 * 12;
-        break;
+        score += possibleLevels[currentLevel].scorePerLine * 12;
+      break;
     }
     
     scoreElem.innerHTML = score;
@@ -213,14 +232,22 @@ function removeFullLines() {
     }
     
   }
+
+// Generate next figure
   
 function getNewTetro() {
   const possibleTetro = "IOLJTSZ";
+  const rand = Math.floor(Math.random() * 7);
+  const newTetro = figures[possibleTetro[rand]];
   
-  let rand = Math.floor(Math.random() * 7);
-  
-  return figures[possibleTetro[rand]];
+  return {
+    x: Math.floor((10 - newTetro[0].length) / 2),
+    y: 0,
+    shape: newTetro,
+  };
 }
+
+// fix figure 
 
 function fixTetro() {
   for (let y = 0; y < playfield.length; y++) {
@@ -232,57 +259,124 @@ function fixTetro() {
   }
 }
 
+// Move figure down
+
 function moveTetroDown() {
   activeTetro.y += 1;
   if (hasCollisions()) {
     activeTetro.y -= 1;
     fixTetro();
     removeFullLines();
-    activeTetro.shape = getNewTetro();
-    activeTetro.x = Math.floor((10 - activeTetro.shape[0].length) / 2); 
-    activeTetro.y = 0;
+    activeTetro = nextTetro;
+    if (hasCollisions()) {
+      reset();
+    }
+    nextTetro = getNewTetro();
   }
 }
+
+function dropTetro() {
+  for (let y = activeTetro.y; y < playfield.length; y++) {
+    activeTetro.y += 1;
+    if (hasCollisions()) {
+      activeTetro.y -= 1;
+      break;
+    }
+  }
+}
+
+function reset() {
+  isPaused = true;
+  clearTimeout(gameTimerID);
+  playfield = [
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  ];
+  draw();
+  gameOver.style.display = "block";
+}
+
+// Listener for control figure
 
 document.onkeydown = function (e) {
-  
-  if (e.keyCode === 37) {
-    activeTetro.x -= 1;
-    if (hasCollisions()) {
-      activeTetro.x += 1;
-    }
-  }
-  
-  else if (e.keyCode === 38) {
-    rotateTetro();
-  }
-  
-  else if (e.keyCode === 39) {
-    activeTetro.x += 1;
-    if (hasCollisions()) {
+  if (!isPaused) {
+    if (e.keyCode === 37) {
       activeTetro.x -= 1;
+      if (hasCollisions()) {
+        activeTetro.x += 1;
+      }
+    } else if (e.keyCode === 39) {
+      activeTetro.x += 1;
+      if (hasCollisions()) {
+        activeTetro.x -= 1;
+      }
+    } else if (e.keyCode === 40) {
+      moveTetroDown();
+    } else if (e.keyCode === 38) {
+      rotateTetro();
+    } else if (e.keyCode === 32) {
+      dropTetro();
     }
+
+    updateGameState();
   }
-  
-  else if (e.keyCode === 40) {
-    moveTetroDown();
-  }
-  
+};
+
+function updateGameState() {
+  if (!isPaused) {
     addActiveTetro();
     draw();
-  };
-  
-  scoreElem.innerHTML = score;
-  levelElem.innerHTML = currentLevel;
-
-  addActiveTetro();
-  draw();
-  
-  function startGame() {
-  moveTetroDown();
-  addActiveTetro();
-  draw();
-  setTimeout(startGame, possibleLevels[currentLevel].speed);
+    drawNextTetro();
+  }
 }
 
-setTimeout(startGame, possibleLevels[currentLevel].speed);
+pauseBtn.addEventListener("click", (e) => {
+  if (e.target.innerHTML === "Pause") {
+    e.target.innerHTML = "Keep Playing...";
+    clearTimeout(gameTimerID);
+  } else {
+    e.target.innerHTML = "Pause";
+    gameTimerID = setTimeout(startGame, possibleLevels[currentLevel].speed);
+  }
+  isPaused = !isPaused;
+});
+
+startBtn.addEventListener("click", (e) => {
+  e.target.innerHTML = "Start again";
+  isPaused = false;
+  gameTimerID = setTimeout(startGame, possibleLevels[currentLevel].speed);
+  gameOver.style.display = "none";
+});
+  
+scoreElem.innerHTML = score;
+levelElem.innerHTML = currentLevel;
+
+draw();
+
+// start game
+
+function startGame() {
+  moveTetroDown();
+  if (!isPaused) {
+    updateGameState();
+    gameTimerID = setTimeout(startGame, possibleLevels[currentLevel].speed);
+  }
+};

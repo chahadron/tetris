@@ -1,3 +1,9 @@
-# tetris
-simple loved old school game
-https://whoisbroken.github.io/Tetris/
+# Tetris
+# Used technologies
+<li>HTML5</li>
+<li>CSS3</li>
+<li>ES6</li>
+
+
+# Build on GitHub Pages
+<https://whoisbroken.github.io/Tetris/>
